@@ -4,9 +4,9 @@ const router = require('express').Router()
 const User = require('../users/users-model')
 const bcrypt = require('bcryptjs')
 const {
-  checkPasswordLenght,
-  checkUsernameExist,
-  checkusernameFree,
+  checkPasswordLength,
+  checkUsernameExists,
+  checkUsernameFree,
 } = require('./auth-middleware')
 
 /**
@@ -31,15 +31,15 @@ const {
     "message": "Password must be longer than 3 chars"
   }
  */
-router.post('/register', checkPasswordLenght, checkusernameFree, (req, res, next) => {
+router.post('/register', checkPasswordLength, checkUsernameFree, (req, res, next) => {
   const { username, password } = req.body
   const hash = bcrypt.hashSync(password, 8)
 
   User.add({ username, password: hash })
-  .then(saved => {
-    res.status(201).json(saved)
-  })
-  .catch(next)
+    .then(saved => {
+      res.status(201).json(saved)
+    })
+    .catch(next)
 })
 
 /**
@@ -57,9 +57,11 @@ router.post('/register', checkPasswordLenght, checkusernameFree, (req, res, next
     "message": "Invalid credentials"
   }
  */
-  router.post('/login', checkUsernameExist, (req, res, next) => {
+  router.post('/login', checkUsernameExists, (req, res, next) => {
     const { password } = req.body
     if (bcrypt.compareSync(password, req.user.password)) {
+      // make it so the cookie is set on the client
+      // make it so server stores a session with a session id
       req.session.user = req.user
       res.json({ message: `Welcome ${req.user.username}` })
     } else {
@@ -83,7 +85,17 @@ router.post('/register', checkPasswordLenght, checkusernameFree, (req, res, next
   }
  */
   router.get('/logout', (req, res, next) => {
-    res.json('logout') 
+    if (req.session.user) {
+      req.session.destroy(err => {
+        if (err) {
+          next(err) 
+        } else {
+          res.json({ message: "logged out" })
+        }
+      })
+    } else {
+      res.json({ message: 'no session' })
+    }
   })
  
 // Don't forget to add the router to the `exports` object so it can be required in other modules
